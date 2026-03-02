@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>長者跌倒偵測監控系統</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./base.css">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+  <a href="#main-content" class="sr-only" style="position:fixed;top:0;left:0;z-index:9999;background:var(--color-primary);color:white;padding:var(--space-2) var(--space-4);font-size:var(--text-sm);">跳至主要內容</a>
+
+  <div class="dashboard">
+    <!-- Header -->
+    <header class="dash-header">
+      <div class="header-left">
+        <div class="logo" aria-label="跌倒偵測系統">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 2L4 8v8c0 8.4 5.12 16.24 12 18 6.88-1.76 12-9.6 12-18V8L16 2z" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M16 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" fill="currentColor"/>
+            <path d="M12.5 14.5a5 5 0 017 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M10 12a8 8 0 0112 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="header-title">
+          <h1>跌倒偵測監控系統</h1>
+          <span class="header-subtitle">WiFi DensePose 即時追蹤</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="mode-toggle" role="group" aria-label="資料模式">
+          <button id="btn-demo" class="mode-btn active" aria-pressed="true">模擬模式</button>
+          <button id="btn-live" class="mode-btn" aria-pressed="false">即時 API</button>
+        </div>
+        <div class="connection-status" id="connection-status">
+          <span class="status-dot-sm green"></span>
+          <span>模擬運行中</span>
+        </div>
+        <button data-theme-toggle aria-label="切換深色模式" class="theme-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="dash-main" id="main-content">
+      <!-- Toast Container -->
+      <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+      <!-- KPI Cards -->
+      <section class="kpi-section" aria-label="關鍵指標">
+        <div class="kpi-grid">
+          <div class="kpi-card" id="kpi-status">
+            <div class="kpi-label">系統狀態</div>
+            <div class="kpi-value" id="kpi-status-value">
+              <span class="status-indicator green"></span>
+              <span>正常</span>
+            </div>
+            <div class="kpi-sub">4 感測器運行中</div>
+          </div>
+          <div class="kpi-card" id="kpi-persons">
+            <div class="kpi-label">偵測人數</div>
+            <div class="kpi-value" id="kpi-persons-value">0</div>
+            <div class="kpi-sub" id="kpi-persons-sub">掃描中...</div>
+          </div>
+          <div class="kpi-card" id="kpi-alerts">
+            <div class="kpi-label">今日警報</div>
+            <div class="kpi-value" id="kpi-alerts-value">0</div>
+            <div class="kpi-sub" id="kpi-alerts-sub">無警報</div>
+          </div>
+          <div class="kpi-card" id="kpi-response">
+            <div class="kpi-label">平均回應時間</div>
+            <div class="kpi-value" id="kpi-response-value">—<span class="kpi-unit">ms</span></div>
+            <div class="kpi-sub" id="kpi-response-sub">等待資料</div>
+          </div>
+          <div class="kpi-card" id="kpi-safety">
+            <div class="kpi-label">安全評級</div>
+            <div class="kpi-value" id="kpi-safety-value">
+              <span class="safety-dot green"></span>
+              <span>正常</span>
+            </div>
+            <div class="kpi-sub" id="kpi-safety-sub">無風險</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Real-time Monitoring -->
+      <section class="monitor-section" aria-label="即時監控">
+        <div class="monitor-grid">
+          <!-- Room Map -->
+          <div class="panel room-panel">
+            <div class="panel-header">
+              <h2>房間監控</h2>
+              <span class="panel-badge" id="room-time">--:--:--</span>
+            </div>
+            <div class="room-grid" id="room-grid">
+              <div class="room-card" data-room="客廳" id="room-living">
+                <div class="room-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9V21H4V9"/><path d="M2 11l10-8 10 8"/><path d="M15 21V13H9v8"/></svg>
+                </div>
+                <div class="room-name">客廳</div>
+                <div class="room-people" id="room-living-people">—</div>
+                <div class="room-activity" id="room-living-activity">—</div>
+                <div class="room-status-bar" id="room-living-bar"></div>
+              </div>
+              <div class="room-card" data-room="睡房" id="room-bedroom">
+                <div class="room-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v11a2 2 0 002 2h14a2 2 0 002-2V7"/><path d="M3 14h18"/><path d="M3 7h2a3 3 0 013 3v1h8v-1a3 3 0 013-3h2"/><path d="M5 7V5a1 1 0 011-1"/></svg>
+                </div>
+                <div class="room-name">睡房</div>
+                <div class="room-people" id="room-bedroom-people">—</div>
+                <div class="room-activity" id="room-bedroom-activity">—</div>
+                <div class="room-status-bar" id="room-bedroom-bar"></div>
+              </div>
+              <div class="room-card" data-room="浴室" id="room-bathroom">
+                <div class="room-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16a1 1 0 011 1v3a4 4 0 01-4 4H7a4 4 0 01-4-4v-3a1 1 0 011-1z"/><path d="M6 12V5a2 2 0 012-2h1"/><circle cx="9" cy="5" r="1"/><path d="M7 20v2"/><path d="M17 20v2"/></svg>
+                </div>
+                <div class="room-name">浴室</div>
+                <div class="room-people" id="room-bathroom-people">—</div>
+                <div class="room-activity" id="room-bathroom-activity">—</div>
+                <div class="room-status-bar" id="room-bathroom-bar"></div>
+              </div>
+              <div class="room-card" data-room="廚房" id="room-kitchen">
+                <div class="room-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2v6a2 2 0 01-2 2h-1v12"/><path d="M12 2v6a2 2 0 01-2 2H9"/><path d="M6 2v20"/><path d="M6 8h4"/></svg>
+                </div>
+                <div class="room-name">廚房</div>
+                <div class="room-people" id="room-kitchen-people">—</div>
+                <div class="room-activity" id="room-kitchen-activity">—</div>
+                <div class="room-status-bar" id="room-kitchen-bar"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity Feed -->
+          <div class="panel feed-panel">
+            <div class="panel-header">
+              <h2>活動記錄</h2>
+              <span class="panel-badge" id="feed-count">0 筆</span>
+            </div>
+            <div class="feed-scroll" id="activity-feed" role="log" aria-label="活動記錄">
+              <div class="feed-empty">等待資料中...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <section class="charts-section" aria-label="統計圖表">
+        <div class="charts-grid">
+          <div class="panel chart-panel">
+            <div class="panel-header">
+              <h2>活動分佈</h2>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="activity-chart" aria-label="活動分佈圓餅圖"></canvas>
+            </div>
+          </div>
+          <div class="panel chart-panel">
+            <div class="panel-header">
+              <h2>24 小時活動趨勢</h2>
+            </div>
+            <div class="chart-wrapper chart-wrapper-wide">
+              <canvas id="timeline-chart" aria-label="24小時活動趨勢折線圖"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Alert History Table -->
+      <section class="table-section" aria-label="警報歷史">
+        <div class="panel table-panel">
+          <div class="panel-header">
+            <h2>警報歷史</h2>
+            <span class="panel-badge" id="alert-count">0 筆</span>
+          </div>
+          <div class="table-wrapper">
+            <table id="alert-table" aria-label="警報歷史記錄">
+              <thead>
+                <tr>
+                  <th scope="col" data-sort="time">時間</th>
+                  <th scope="col" data-sort="person">人員</th>
+                  <th scope="col" data-sort="location">地點</th>
+                  <th scope="col" data-sort="event">事件</th>
+                  <th scope="col" data-sort="confidence">信心度</th>
+                  <th scope="col" data-sort="status">狀態</th>
+                </tr>
+              </thead>
+              <tbody id="alert-tbody">
+                <tr class="table-empty">
+                  <td colspan="6">尚無警報記錄</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="dash-footer">
+        <span>跌倒偵測監控系統 v1.0 — WiFi DensePose</span>
+        <span id="footer-time"></span>
+      </footer>
+    </main>
+  </div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
